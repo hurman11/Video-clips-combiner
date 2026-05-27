@@ -1,0 +1,2825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudioFlow — Premium Browser Video Editor</title>
+  <meta name="description" content="A production-grade, fully client-side video editor with clip combining, 360° to 180° conversion, and 4K support. No data ever leaves your browser.">
+  <style>
+/* ============================================================
+   SECTION 1: RESET, CUSTOM PROPERTIES & BASE STYLES
+   ============================================================ */
+*, *::before, *::after {
+  margin: 0; padding: 0; box-sizing: border-box;
+}
+
+:root {
+  /* --- Background & Surface Colors --- */
+  --bg-primary: #070b14;
+  --bg-secondary: #0d1220;
+  --bg-tertiary: #131a2e;
+  --bg-card: rgba(15, 20, 38, 0.65);
+  --bg-card-hover: rgba(22, 30, 55, 0.75);
+  --bg-input: rgba(10, 15, 30, 0.6);
+
+  /* --- Border & Glass --- */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-light: rgba(255, 255, 255, 0.1);
+  --border-glow: rgba(79, 143, 255, 0.35);
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.07);
+  --glass-blur: 24px;
+
+  /* --- Text --- */
+  --text-primary: #e4e8f1;
+  --text-secondary: #8a94ae;
+  --text-muted: #555f78;
+  --text-inverse: #070b14;
+
+  /* --- Accents --- */
+  --accent-blue: #4f8fff;
+  --accent-purple: #7c5cff;
+  --accent-cyan: #00d4ff;
+  --accent-gradient: linear-gradient(135deg, #4f8fff 0%, #7c5cff 100%);
+  --accent-gradient-hover: linear-gradient(135deg, #6aa0ff 0%, #9274ff 100%);
+  --accent-glow: rgba(79, 143, 255, 0.18);
+
+  /* --- Status Colors --- */
+  --success: #00d68f;
+  --success-bg: rgba(0, 214, 143, 0.12);
+  --warning: #ffb800;
+  --warning-bg: rgba(255, 184, 0, 0.12);
+  --error: #ff4757;
+  --error-bg: rgba(255, 71, 87, 0.12);
+
+  /* --- Radii --- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  /* --- Shadows --- */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 40px rgba(79, 143, 255, 0.08);
+  --shadow-glow-strong: 0 0 60px rgba(79, 143, 255, 0.15);
+
+  /* --- Transitions --- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --t-fast: 150ms var(--ease-in-out);
+  --t-normal: 280ms var(--ease-out);
+  --t-slow: 450ms var(--ease-out);
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(79, 143, 255, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 100%, rgba(124, 92, 255, 0.04) 0%, transparent 50%);
+}
+
+/* ============================================================
+   SECTION 2: TYPOGRAPHY
+   ============================================================ */
+h1, h2, h3, h4 { font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; }
+h1 { font-size: 1.75rem; }
+h2 { font-size: 1.25rem; color: var(--text-primary); }
+h3 { font-size: 1rem; color: var(--text-secondary); font-weight: 600; }
+
+/* ============================================================
+   SECTION 3: APP LAYOUT
+   ============================================================ */
+#app {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.5rem 2rem 3rem;
+}
+
+/* ============================================================
+   SECTION 4: COMPATIBILITY BANNER
+   ============================================================ */
+#compat-banner {
+  display: none;
+  background: var(--warning-bg);
+  border: 1px solid rgba(255, 184, 0, 0.25);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1.25rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.85rem;
+  color: var(--warning);
+  line-height: 1.5;
+  animation: fadeSlideDown 0.4s var(--ease-out);
+}
+#compat-banner.visible { display: block; }
+#compat-banner strong { font-weight: 700; }
+
+/* ============================================================
+   SECTION 5: HEADER
+   ============================================================ */
+#app-header {
+  text-align: center;
+  padding: 2rem 0 1.5rem;
+  position: relative;
+}
+#app-header h1 {
+  font-size: 2.25rem;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: inline-block;
+  margin-bottom: 0.25rem;
+}
+#app-header .subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+.badge-client {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  padding: 0.3rem 0.75rem;
+  background: var(--success-bg);
+  border: 1px solid rgba(0, 214, 143, 0.2);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  color: var(--success);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.badge-client svg { width: 12px; height: 12px; }
+
+/* ============================================================
+   SECTION 6: TAB NAVIGATION
+   ============================================================ */
+#tab-nav {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  padding: 0.35rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+.tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.65rem 1.75rem;
+  border-radius: calc(var(--radius-xl) - 4px);
+  cursor: pointer;
+  transition: all var(--t-normal);
+  position: relative;
+  letter-spacing: 0.01em;
+}
+.tab-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.04); }
+.tab-btn.active {
+  color: #fff;
+  background: var(--accent-gradient);
+  box-shadow: 0 2px 16px rgba(79, 143, 255, 0.3);
+}
+
+.tab-content { display: none; animation: fadeSlideUp 0.45s var(--ease-out); }
+.tab-content.active { display: block; }
+
+/* ============================================================
+   SECTION 7: GLASS CARDS
+   ============================================================ */
+.glass-card {
+  background: var(--bg-card);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-md), var(--shadow-glow);
+  transition: border-color var(--t-normal), box-shadow var(--t-normal);
+}
+.glass-card:hover {
+  border-color: var(--border-light);
+  box-shadow: var(--shadow-lg), var(--shadow-glow-strong);
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+.card-header h2 {
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.card-header h2 svg { width: 20px; height: 20px; opacity: 0.7; }
+
+/* ============================================================
+   SECTION 8: UPLOAD ZONES
+   ============================================================ */
+.upload-zone {
+  position: relative;
+  border: 2px dashed var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--t-normal);
+  background: var(--glass-bg);
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+.upload-zone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--accent-gradient);
+  opacity: 0;
+  transition: opacity var(--t-normal);
+  pointer-events: none;
+}
+.upload-zone:hover, .upload-zone.drag-over {
+  border-color: var(--accent-blue);
+  background: rgba(79, 143, 255, 0.04);
+}
+.upload-zone.drag-over::before { opacity: 0.04; }
+.upload-zone.drag-over { transform: scale(1.005); }
+.upload-zone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+.upload-icon {
+  width: 56px; height: 56px;
+  margin: 0 auto 1rem;
+  opacity: 0.5;
+  transition: all var(--t-normal);
+  color: var(--accent-blue);
+}
+.upload-zone:hover .upload-icon,
+.upload-zone.drag-over .upload-icon {
+  opacity: 1;
+  transform: translateY(-4px) scale(1.08);
+}
+.upload-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.35rem;
+}
+.upload-subtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.upload-btn-label {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.55rem 1.5rem;
+  background: var(--accent-gradient);
+  color: #fff;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--t-fast);
+  position: relative;
+  z-index: 3;
+  pointer-events: none;
+  box-shadow: 0 2px 12px rgba(79, 143, 255, 0.25);
+}
+.upload-zone:hover .upload-btn-label {
+  box-shadow: 0 4px 20px rgba(79, 143, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Animated dashed border */
+@keyframes dashRotate {
+  to { stroke-dashoffset: -40; }
+}
+
+/* ============================================================
+   SECTION 9: TIMELINE & CLIP CARDS
+   ============================================================ */
+#clip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+#clip-list::-webkit-scrollbar { width: 5px; }
+#clip-list::-webkit-scrollbar-track { background: transparent; }
+#clip-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+
+.clip-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.65rem 0.85rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: all var(--t-normal);
+  animation: fadeSlideUp 0.35s var(--ease-out);
+  position: relative;
+}
+.clip-card:hover {
+  border-color: var(--border-light);
+  background: var(--bg-card-hover);
+}
+.clip-card.dragging {
+  opacity: 0.4;
+  transform: scale(0.97);
+}
+.clip-card.drag-over-card {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(79, 143, 255, 0.2);
+}
+
+.clip-drag-handle {
+  cursor: grab;
+  color: var(--text-muted);
+  padding: 0.25rem;
+  transition: color var(--t-fast);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.clip-drag-handle:active { cursor: grabbing; }
+.clip-drag-handle:hover { color: var(--text-secondary); }
+.clip-drag-handle svg { width: 16px; height: 16px; }
+
+.clip-thumb {
+  width: 72px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+  border: 1px solid var(--border-subtle);
+}
+
+.clip-info {
+  flex: 1;
+  min-width: 0;
+}
+.clip-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 0.15rem;
+}
+.clip-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.clip-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.clip-duration-badge {
+  background: var(--accent-gradient);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+.clip-index-badge {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.05);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.clip-remove {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.35rem;
+  border-radius: var(--radius-sm);
+  transition: all var(--t-fast);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.clip-remove:hover { color: var(--error); background: var(--error-bg); }
+.clip-remove svg { width: 15px; height: 15px; }
+
+/* ============================================================
+   SECTION 10: BUTTONS
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.6rem;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--t-normal);
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 0.01em;
+}
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, transparent 60%);
+  pointer-events: none;
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+}
+.btn svg { width: 18px; height: 18px; }
+
+.btn-primary {
+  background: var(--accent-gradient);
+  color: #fff;
+  box-shadow: 0 2px 16px rgba(79, 143, 255, 0.3);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-gradient-hover);
+  box-shadow: 0 4px 24px rgba(79, 143, 255, 0.4);
+  transform: translateY(-1px);
+}
+.btn-primary:active:not(:disabled) { transform: translateY(0); }
+
+.btn-secondary {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.18);
+  transform: translateY(-1px);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #00d68f 0%, #00b377 100%);
+  color: #fff;
+  box-shadow: 0 2px 16px rgba(0, 214, 143, 0.25);
+}
+.btn-success:hover:not(:disabled) {
+  box-shadow: 0 4px 24px rgba(0, 214, 143, 0.35);
+  transform: translateY(-1px);
+}
+
+.controls-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  flex-wrap: wrap;
+}
+
+/* ============================================================
+   SECTION 11: CUSTOM RANGE SLIDERS
+   ============================================================ */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 3px;
+  outline: none;
+  transition: background var(--t-fast);
+}
+input[type="range"]:hover { background: rgba(255,255,255,0.12); }
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px; height: 18px;
+  background: var(--accent-gradient);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(79, 143, 255, 0.4);
+  transition: transform var(--t-fast), box-shadow var(--t-fast);
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 2px 14px rgba(79, 143, 255, 0.5);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 18px; height: 18px;
+  background: var(--accent-gradient);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(79, 143, 255, 0.4);
+}
+
+/* ============================================================
+   SECTION 12: PROGRESS BAR
+   ============================================================ */
+.progress-container {
+  width: 100%;
+  margin: 0.5rem 0;
+}
+.progress-bar-track {
+  width: 100%;
+  height: 8px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: var(--accent-gradient);
+  border-radius: 4px;
+  width: 0%;
+  transition: width 0.3s var(--ease-out);
+  position: relative;
+}
+.progress-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 40px; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3));
+  animation: progressShimmer 1.5s infinite;
+}
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.35rem;
+}
+
+/* ============================================================
+   SECTION 13: PROCESSING OVERLAY
+   ============================================================ */
+#processing-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 11, 20, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s var(--ease-out);
+}
+#processing-overlay.visible { display: flex; }
+.processing-box {
+  background: var(--bg-card);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  padding: 2.5rem 3rem;
+  text-align: center;
+  min-width: 360px;
+  box-shadow: var(--shadow-lg), var(--shadow-glow-strong);
+  animation: scaleIn 0.35s var(--ease-out);
+}
+
+/* Custom spinner */
+.spinner {
+  width: 52px; height: 52px;
+  margin: 0 auto 1.25rem;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.08);
+  border-top-color: var(--accent-blue);
+  border-right-color: var(--accent-purple);
+  animation: spin 0.8s linear infinite;
+}
+.processing-status {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+.processing-detail {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 1.25rem;
+}
+.processing-percent {
+  font-size: 1.8rem;
+  font-weight: 700;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-top: 0.75rem;
+}
+
+/* ============================================================
+   SECTION 14: TOAST NOTIFICATIONS
+   ============================================================ */
+#toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.6rem;
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.8rem 1.2rem;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 500;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid;
+  min-width: 280px;
+  max-width: 420px;
+  pointer-events: auto;
+  animation: toastIn 0.4s var(--ease-out);
+  box-shadow: var(--shadow-md);
+}
+.toast.toast-out { animation: toastOut 0.3s var(--ease-in-out) forwards; }
+.toast-success {
+  background: var(--success-bg);
+  border-color: rgba(0, 214, 143, 0.2);
+  color: var(--success);
+}
+.toast-warning {
+  background: var(--warning-bg);
+  border-color: rgba(255, 184, 0, 0.2);
+  color: var(--warning);
+}
+.toast-error {
+  background: var(--error-bg);
+  border-color: rgba(255, 71, 87, 0.2);
+  color: var(--error);
+}
+.toast svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+/* ============================================================
+   SECTION 15: PREVIEW AREAS
+   ============================================================ */
+.preview-area {
+  position: relative;
+  background: #000;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  aspect-ratio: 16/9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.preview-area video, .preview-area canvas {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: var(--radius-md);
+}
+.preview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 1rem;
+}
+.preview-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.5rem;
+}
+.source-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.info-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.info-chip .label { color: var(--text-muted); }
+
+/* ============================================================
+   SECTION 16: ANIMATIONS & KEYFRAMES
+   ============================================================ */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeSlideDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes progressShimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(200%); }
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(60px) scale(0.95); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes toastOut {
+  from { opacity: 1; transform: translateX(0) scale(1); }
+  to { opacity: 0; transform: translateX(60px) scale(0.9); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ============================================================
+   SECTION 17: RESPONSIVE
+   ============================================================ */
+@media (max-width: 900px) {
+  #app { padding: 1rem; }
+  .preview-grid { grid-template-columns: 1fr; }
+  .processing-box { min-width: auto; margin: 1rem; padding: 2rem; }
+  .clip-card { flex-wrap: wrap; }
+  .clip-meta { font-size: 0.65rem; }
+}
+@media (max-width: 600px) {
+  #app-header h1 { font-size: 1.6rem; }
+  .tab-btn { padding: 0.5rem 1rem; font-size: 0.8rem; }
+  .upload-zone { padding: 2rem 1rem; }
+  .glass-card { padding: 1rem; }
+}
+
+/* ============================================================
+   SECTION 18: HIDDEN / UTILITY
+   ============================================================ */
+.hidden { display: none !important; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); border: 0;
+}
+.total-duration-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.total-duration-label strong {
+  color: var(--accent-blue);
+}
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* ============================================================
+   SECTION 19: ROTATE & FLIP CONTROLS
+   ============================================================ */
+.rotate-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 1.25rem 0;
+}
+.rotate-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.1rem;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--t-normal);
+  position: relative;
+  overflow: hidden;
+}
+.rotate-btn svg { width: 18px; height: 18px; transition: transform 0.35s var(--ease-out); }
+.rotate-btn:hover {
+  background: rgba(79, 143, 255, 0.1);
+  border-color: var(--accent-blue);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+.rotate-btn:hover svg { transform: rotate(90deg); }
+.rotate-btn.flip-btn:hover svg { transform: scaleX(-1); }
+.rotate-btn.flip-v-btn:hover svg { transform: scaleY(-1); }
+.rotate-btn:active { transform: translateY(0) scale(0.97); }
+.rotate-btn.active {
+  background: var(--accent-gradient);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 2px 14px rgba(79, 143, 255, 0.3);
+}
+
+.rotate-info-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0.65rem 1.25rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.rotate-info-item {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.rotate-info-item strong {
+  color: var(--accent-blue);
+  font-weight: 700;
+}
+
+.rotate-preview-wrapper {
+  position: relative;
+  background: #000;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 16/9;
+  margin-bottom: 1rem;
+}
+.rotate-preview-wrapper canvas {
+  max-width: 100%;
+  max-height: 100%;
+  transition: transform 0.4s var(--ease-out);
+}
+.rotate-original-video {
+  display: none;
+}
+  </style>
+</head>
+<body>
+
+<!-- ============================================================
+     COMPATIBILITY BANNER
+     ============================================================ -->
+<div id="compat-banner" role="alert"></div>
+
+<div id="app">
+  <!-- ============================================================
+       HEADER
+       ============================================================ -->
+  <header id="app-header">
+    <h1>StudioFlow</h1>
+    <p class="subtitle">Premium Browser Video Editor</p>
+    <div class="badge-client">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      100% Client-Side &bull; Your data never leaves the browser
+    </div>
+  </header>
+
+  <!-- ============================================================
+       TAB NAVIGATION
+       ============================================================ -->
+  <nav id="tab-nav" role="tablist">
+    <button class="tab-btn active" data-tab="combiner" role="tab" aria-selected="true" id="tab-combiner-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:16px;height:16px;margin-right:4px;vertical-align:-2px"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      Clip Combiner
+    </button>
+    <button class="tab-btn" data-tab="rotator" role="tab" aria-selected="false" id="tab-rotator-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:16px;height:16px;margin-right:4px;vertical-align:-2px"><path d="M21.5 2v6h-6"/><path d="M21.34 15.57a10 10 0 1 1-.57-8.38L21.5 8"/></svg>
+      Rotate &amp; Flip
+    </button>
+    <button class="tab-btn" data-tab="converter" role="tab" aria-selected="false" id="tab-converter-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:16px;height:16px;margin-right:4px;vertical-align:-2px"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
+      360° → 180° Converter
+    </button>
+  </nav>
+
+  <!-- ============================================================
+       CLIP COMBINER TAB
+       ============================================================ -->
+  <section id="combiner-tab" class="tab-content active" role="tabpanel" aria-labelledby="tab-combiner-btn">
+
+    <!-- Upload Zone -->
+    <div class="upload-zone" id="combiner-upload-zone">
+      <input type="file" id="combiner-file-input" multiple accept="video/mp4,video/webm,video/quicktime,video/x-matroska,.mp4,.webm,.mov,.mkv" aria-label="Upload video clips">
+      <div class="upload-content">
+        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p class="upload-title">Drop video clips here</p>
+        <p class="upload-subtitle">MP4, WebM, MOV — multiple files supported</p>
+        <span class="upload-btn-label">Browse Files</span>
+      </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="glass-card hidden" id="combiner-timeline">
+      <div class="card-header">
+        <h2>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          Timeline
+        </h2>
+        <span class="total-duration-label" id="total-duration"></span>
+      </div>
+      <div id="clip-list"></div>
+      <div class="controls-row">
+        <button class="btn btn-primary" id="combine-btn" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Combine Clips
+        </button>
+        <button class="btn btn-secondary" id="clear-clips-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          Clear All
+        </button>
+      </div>
+    </div>
+
+    <!-- Result Preview -->
+    <div class="glass-card hidden" id="combiner-result-section">
+      <div class="card-header">
+        <h2>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Combined Result
+        </h2>
+      </div>
+      <div class="preview-area">
+        <video id="combiner-result-video" controls></video>
+      </div>
+      <div class="controls-row" style="margin-top:1rem">
+        <button class="btn btn-success" id="download-combined-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Video
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       ROTATE & FLIP TAB
+       ============================================================ -->
+  <section id="rotator-tab" class="tab-content" role="tabpanel" aria-labelledby="tab-rotator-btn">
+
+    <!-- Upload Zone -->
+    <div class="upload-zone" id="rotator-upload-zone">
+      <input type="file" id="rotator-file-input" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov" aria-label="Upload video to rotate">
+      <div class="upload-content">
+        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.5 2v6h-6"/>
+          <path d="M21.34 15.57a10 10 0 1 1-.57-8.38L21.5 8"/>
+        </svg>
+        <p class="upload-title">Drop your upside-down or sideways video here</p>
+        <p class="upload-subtitle">MP4, WebM, MOV — fix rotation &amp; flip instantly</p>
+        <span class="upload-btn-label">Browse File</span>
+      </div>
+    </div>
+
+    <!-- Rotate Workspace -->
+    <div class="glass-card hidden" id="rotator-workspace">
+      <div class="card-header">
+        <h2>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.5 2v6h-6"/><path d="M21.34 15.57a10 10 0 1 1-.57-8.38L21.5 8"/></svg>
+          Rotate &amp; Flip
+        </h2>
+      </div>
+
+      <div id="rotator-source-info" class="source-info" style="margin-bottom:0.75rem"></div>
+
+      <!-- Rotation/Flip info bar -->
+      <div class="rotate-info-bar" id="rotate-info-bar">
+        <span class="rotate-info-item">Rotation: <strong id="rotate-angle-display">0°</strong></span>
+        <span class="rotate-info-item">Flip H: <strong id="flip-h-display">Off</strong></span>
+        <span class="rotate-info-item">Flip V: <strong id="flip-v-display">Off</strong></span>
+      </div>
+
+      <!-- Controls -->
+      <div class="rotate-controls">
+        <button class="rotate-btn" id="rotate-ccw-btn" title="Rotate 90° Counter-Clockwise">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2.5 2v6h6"/><path d="M2.66 15.57a10 10 0 1 0 .57-8.38L2.5 8"/></svg>
+          90° Left
+        </button>
+        <button class="rotate-btn" id="rotate-cw-btn" title="Rotate 90° Clockwise">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.5 2v6h-6"/><path d="M21.34 15.57a10 10 0 1 1-.57-8.38L21.5 8"/></svg>
+          90° Right
+        </button>
+        <button class="rotate-btn" id="rotate-180-btn" title="Rotate 180°">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          180°
+        </button>
+        <button class="rotate-btn flip-btn" id="flip-h-btn" title="Flip Horizontal (Mirror)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3"/><path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+          Flip H
+        </button>
+        <button class="rotate-btn flip-v-btn" id="flip-v-btn" title="Flip Vertical">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3"/><path d="M3 16v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+          Flip V
+        </button>
+        <button class="rotate-btn" id="rotate-reset-btn" title="Reset all transforms">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          Reset
+        </button>
+      </div>
+
+      <!-- Preview -->
+      <div class="rotate-preview-wrapper">
+        <canvas id="rotator-canvas"></canvas>
+      </div>
+      <video id="rotator-source-video" class="rotate-original-video" muted loop playsinline></video>
+
+      <div class="controls-row" style="justify-content:center">
+        <button class="btn btn-primary" id="rotator-export-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Export Rotated Video
+        </button>
+        <button class="btn btn-success hidden" id="rotator-download-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       360° → 180° CONVERTER TAB
+       ============================================================ -->
+  <section id="converter-tab" class="tab-content" role="tabpanel" aria-labelledby="tab-converter-btn">
+
+    <!-- Upload Zone -->
+    <div class="upload-zone" id="converter-upload-zone">
+      <input type="file" id="converter-file-input" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov" aria-label="Upload 360° video">
+      <div class="upload-content">
+        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M2 12h20"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/>
+        </svg>
+        <p class="upload-title">Drop equirectangular 360° video here</p>
+        <p class="upload-subtitle">MP4, WebM, MOV — single file</p>
+        <span class="upload-btn-label">Browse File</span>
+      </div>
+    </div>
+
+    <!-- Workspace -->
+    <div class="glass-card hidden" id="converter-workspace">
+      <div class="card-header">
+        <h2>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>
+          360° → 180° Preview
+        </h2>
+      </div>
+
+      <div id="converter-source-info" class="source-info" style="margin-bottom:1rem"></div>
+
+      <div class="preview-grid">
+        <div>
+          <p class="preview-label">Original 360° Equirectangular</p>
+          <div class="preview-area">
+            <video id="source-360-video" controls muted loop></video>
+          </div>
+        </div>
+        <div>
+          <p class="preview-label">180° Hemispherical Output</p>
+          <div class="preview-area" id="webgl-preview-area">
+            <canvas id="webgl-canvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls-row">
+        <button class="btn btn-primary" id="convert-start-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Convert &amp; Record
+        </button>
+        <button class="btn btn-secondary" id="preview-toggle-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          Live Preview
+        </button>
+        <button class="btn btn-success hidden" id="download-converted-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download 180° Video
+        </button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ============================================================
+     TOAST NOTIFICATION CONTAINER
+     ============================================================ -->
+<div id="toast-container" aria-live="polite"></div>
+
+<!-- ============================================================
+     PROCESSING OVERLAY
+     ============================================================ -->
+<div id="processing-overlay">
+  <div class="processing-box">
+    <div class="spinner"></div>
+    <p class="processing-status" id="processing-status">Processing…</p>
+    <p class="processing-detail" id="processing-detail"></p>
+    <div class="progress-container">
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="processing-fill"></div>
+      </div>
+      <div class="progress-label">
+        <span id="processing-step"></span>
+        <span id="processing-percent-label">0%</span>
+      </div>
+    </div>
+    <p class="processing-percent" id="processing-percent">0%</p>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   StudioFlow — Premium Browser Video Editor
+   100% client-side. Zero dependencies. Zero server calls.
+   ================================================================ */
+'use strict';
+
+/* ================================================================
+   SECTION 1: FEATURE DETECTION & CONFIGURATION
+   ================================================================ */
+const Features = {
+  webCodecs: typeof VideoEncoder !== 'undefined' && typeof VideoDecoder !== 'undefined',
+  offscreenCanvas: typeof OffscreenCanvas !== 'undefined',
+  mediaRecorder: typeof MediaRecorder !== 'undefined',
+  captureStream: typeof HTMLCanvasElement.prototype.captureStream === 'function',
+  requestVideoFrameCallback: 'requestVideoFrameCallback' in HTMLVideoElement.prototype,
+  webGL2: (() => { try { const c = document.createElement('canvas'); return !!c.getContext('webgl2'); } catch { return false; } })(),
+  webGL1: (() => { try { const c = document.createElement('canvas'); return !!c.getContext('webgl'); } catch { return false; } })(),
+};
+
+// Show compatibility banner if critical APIs are missing
+(function checkCompat() {
+  const warnings = [];
+  if (!Features.mediaRecorder) warnings.push('MediaRecorder API is not supported — video recording will not work.');
+  if (!Features.captureStream) warnings.push('Canvas captureStream is not supported — video export will not work.');
+  if (!Features.webGL2 && !Features.webGL1) warnings.push('WebGL is not supported — 360° conversion will not be available.');
+  if (!Features.webCodecs) warnings.push('WebCodecs API is not available — using MediaRecorder fallback (software encoding).');
+  if (!Features.requestVideoFrameCallback) warnings.push('requestVideoFrameCallback not supported — frame timing may be less precise.');
+
+  if (warnings.length > 0) {
+    const banner = document.getElementById('compat-banner');
+    banner.innerHTML = '<strong>⚠ Browser Compatibility:</strong> ' + warnings.join(' ');
+    banner.classList.add('visible');
+  }
+})();
+
+/* ================================================================
+   SECTION 2: UTILITY FUNCTIONS
+   ================================================================ */
+
+/** Format seconds to MM:SS or HH:MM:SS */
+function formatTime(seconds) {
+  if (!isFinite(seconds) || seconds < 0) return '0:00';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+/** Format bytes to human-readable size */
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return (bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0) + ' ' + units[i];
+}
+
+/** Generate a unique ID */
+let _idCounter = 0;
+function uniqueId(prefix = 'id') { return `${prefix}_${++_idCounter}_${Date.now()}`; }
+
+/** Safely revoke an object URL */
+function safeRevokeURL(url) {
+  if (url && url.startsWith('blob:')) {
+    try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ }
+  }
+}
+
+/** Detect the best supported MediaRecorder MIME type */
+function getBestMimeType() {
+  const types = [
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp9',
+    'video/webm;codecs=vp8,opus',
+    'video/webm;codecs=vp8',
+    'video/webm',
+    'video/mp4',
+  ];
+  for (const type of types) {
+    if (MediaRecorder.isTypeSupported(type)) return type;
+  }
+  return '';
+}
+
+/** Get file extension from MIME type */
+function getExtFromMime(mime) {
+  if (mime.includes('mp4')) return 'mp4';
+  return 'webm';
+}
+
+/* ================================================================
+   SECTION 3: TOAST NOTIFICATION SYSTEM
+   ================================================================ */
+const Toast = (() => {
+  const container = document.getElementById('toast-container');
+
+  const icons = {
+    success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+  };
+
+  function show(message, type = 'success', duration = 4000) {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `${icons[type] || ''}<span>${message}</span>`;
+    container.appendChild(toast);
+
+    // Auto-dismiss
+    const timer = setTimeout(() => dismiss(toast), duration);
+    toast.addEventListener('click', () => { clearTimeout(timer); dismiss(toast); });
+  }
+
+  function dismiss(toast) {
+    toast.classList.add('toast-out');
+    toast.addEventListener('animationend', () => toast.remove());
+  }
+
+  return {
+    success: (msg, dur) => show(msg, 'success', dur),
+    warning: (msg, dur) => show(msg, 'warning', dur),
+    error: (msg, dur) => show(msg, 'error', dur),
+  };
+})();
+
+/* ================================================================
+   SECTION 4: PROCESSING OVERLAY CONTROLLER
+   ================================================================ */
+const Overlay = (() => {
+  const el = document.getElementById('processing-overlay');
+  const statusEl = document.getElementById('processing-status');
+  const detailEl = document.getElementById('processing-detail');
+  const fillEl = document.getElementById('processing-fill');
+  const stepEl = document.getElementById('processing-step');
+  const pctLabelEl = document.getElementById('processing-percent-label');
+  const pctEl = document.getElementById('processing-percent');
+
+  function show(status, detail) {
+    statusEl.textContent = status || 'Processing…';
+    detailEl.textContent = detail || '';
+    fillEl.style.width = '0%';
+    pctLabelEl.textContent = '0%';
+    pctEl.textContent = '0%';
+    stepEl.textContent = '';
+    el.classList.add('visible');
+  }
+
+  function update(percent, step, status) {
+    const p = Math.max(0, Math.min(100, Math.round(percent)));
+    fillEl.style.width = p + '%';
+    pctLabelEl.textContent = p + '%';
+    pctEl.textContent = p + '%';
+    if (step) stepEl.textContent = step;
+    if (status) statusEl.textContent = status;
+  }
+
+  function hide() {
+    el.classList.remove('visible');
+  }
+
+  return { show, update, hide };
+})();
+
+/* ================================================================
+   SECTION 5: VIDEO METADATA EXTRACTION
+   ================================================================ */
+
+/**
+ * Extracts metadata from a video file: resolution, duration, estimated FPS, file size.
+ * Returns a Promise that resolves with metadata.
+ */
+function extractVideoMeta(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted = true;
+
+    let resolved = false;
+    const cleanup = () => {
+      video.removeAttribute('src');
+      video.load();
+    };
+
+    video.addEventListener('loadedmetadata', () => {
+      if (resolved) return;
+      resolved = true;
+
+      const meta = {
+        width: video.videoWidth,
+        height: video.videoHeight,
+        duration: video.duration,
+        fps: 30, // default estimate
+        codec: guessCodec(file),
+        fileSize: file.size,
+        fileName: file.name,
+        url: url, // caller must revoke when done
+        videoElement: null,
+      };
+
+      // Try to detect FPS via requestVideoFrameCallback
+      if (Features.requestVideoFrameCallback && meta.duration > 0.1) {
+        detectFPS(video, url).then(fps => {
+          meta.fps = fps;
+          cleanup();
+          resolve(meta);
+        }).catch(() => {
+          cleanup();
+          resolve(meta);
+        });
+      } else {
+        cleanup();
+        resolve(meta);
+      }
+    });
+
+    video.addEventListener('error', () => {
+      if (!resolved) {
+        resolved = true;
+        safeRevokeURL(url);
+        reject(new Error(`Failed to load video: ${file.name}`));
+      }
+    });
+
+    video.src = url;
+  });
+}
+
+/** Attempt FPS detection by counting frames in a short sample */
+function detectFPS(video, url) {
+  return new Promise((resolve, reject) => {
+    const testVideo = document.createElement('video');
+    testVideo.muted = true;
+    testVideo.playsInline = true;
+    testVideo.src = url;
+
+    let frameCount = 0;
+    let startTime = null;
+    const sampleDuration = 0.5; // sample 500ms
+    let done = false;
+
+    function onFrame(now, metadata) {
+      if (done) return;
+      if (startTime === null) startTime = metadata.mediaTime;
+      frameCount++;
+
+      if (metadata.mediaTime - startTime >= sampleDuration) {
+        done = true;
+        testVideo.pause();
+        const elapsed = metadata.mediaTime - startTime;
+        const fps = elapsed > 0 ? Math.round(frameCount / elapsed) : 30;
+        // Snap to common frame rates
+        const common = [24, 25, 30, 48, 50, 60, 90, 120, 144, 240];
+        const snapped = common.reduce((a, b) => Math.abs(b - fps) < Math.abs(a - fps) ? b : a);
+        resolve(snapped);
+        testVideo.removeAttribute('src');
+        testVideo.load();
+        return;
+      }
+      testVideo.requestVideoFrameCallback(onFrame);
+    }
+
+    testVideo.addEventListener('canplay', () => {
+      testVideo.requestVideoFrameCallback(onFrame);
+      testVideo.play().catch(() => {
+        resolve(30);
+      });
+    }, { once: true });
+
+    testVideo.addEventListener('error', () => reject(new Error('FPS detection failed')));
+
+    // Timeout fallback
+    setTimeout(() => {
+      if (!done) {
+        done = true;
+        testVideo.pause();
+        testVideo.removeAttribute('src');
+        testVideo.load();
+        resolve(30);
+      }
+    }, 3000);
+  });
+}
+
+/** Guess codec from file name/type */
+function guessCodec(file) {
+  const name = file.name.toLowerCase();
+  const type = (file.type || '').toLowerCase();
+  if (name.endsWith('.webm') || type.includes('webm')) return 'VP8/VP9';
+  if (name.endsWith('.mov') || type.includes('quicktime')) return 'H.264/ProRes';
+  if (name.endsWith('.mkv')) return 'H.264/H.265';
+  if (name.endsWith('.mp4') || type.includes('mp4')) return 'H.264/H.265';
+  return 'Unknown';
+}
+
+/* ================================================================
+   SECTION 6: THUMBNAIL GENERATOR
+   ================================================================ */
+
+/**
+ * Generates a thumbnail from a video file at t=1s (or t=0 if short).
+ * Returns a data URL string.
+ */
+function generateThumbnail(file, seekTime = 1) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.preload = 'auto';
+    video.muted = true;
+    video.playsInline = true;
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    video.addEventListener('loadedmetadata', () => {
+      const t = Math.min(seekTime, video.duration * 0.1 || 0);
+      video.currentTime = t;
+    });
+
+    video.addEventListener('seeked', () => {
+      canvas.width = Math.min(video.videoWidth, 320);
+      canvas.height = Math.round(canvas.width * (video.videoHeight / video.videoWidth));
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      safeRevokeURL(url);
+      video.removeAttribute('src');
+      video.load();
+      resolve(dataUrl);
+    }, { once: true });
+
+    video.addEventListener('error', () => {
+      safeRevokeURL(url);
+      resolve(''); // Return empty on error
+    });
+
+    video.src = url;
+  });
+}
+
+/* ================================================================
+   SECTION 7: TAB NAVIGATION
+   ================================================================ */
+(function initTabs() {
+  const btns = document.querySelectorAll('.tab-btn');
+  const tabs = document.querySelectorAll('.tab-content');
+
+  btns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.tab;
+      btns.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
+      tabs.forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      btn.setAttribute('aria-selected', 'true');
+      document.getElementById(`${target}-tab`).classList.add('active');
+    });
+  });
+})();
+
+/* ================================================================
+   SECTION 8: DRAG & DROP UPLOAD ZONES
+   ================================================================ */
+function setupUploadZone(zoneId, inputId, onFiles) {
+  const zone = document.getElementById(zoneId);
+  const input = document.getElementById(inputId);
+
+  ['dragenter', 'dragover'].forEach(evt => {
+    zone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); zone.classList.add('drag-over'); });
+  });
+  ['dragleave', 'drop'].forEach(evt => {
+    zone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); zone.classList.remove('drag-over'); });
+  });
+
+  zone.addEventListener('drop', e => {
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('video/') || /\.(mp4|webm|mov|mkv)$/i.test(f.name));
+    if (files.length) onFiles(files);
+    else Toast.warning('Please drop video files (MP4, WebM, MOV).');
+  });
+
+  input.addEventListener('change', () => {
+    const files = Array.from(input.files);
+    if (files.length) onFiles(files);
+    input.value = ''; // Reset so same file can be re-selected
+  });
+}
+
+/* ================================================================
+   SECTION 9: CLIP COMBINER MODULE
+   ================================================================ */
+const ClipCombiner = (() => {
+  let clips = []; // Array of { id, file, meta, thumbUrl }
+  let combinedBlobUrl = null;
+
+  const timelineEl = document.getElementById('combiner-timeline');
+  const clipListEl = document.getElementById('clip-list');
+  const combineBtn = document.getElementById('combine-btn');
+  const clearBtn = document.getElementById('clear-clips-btn');
+  const resultSection = document.getElementById('combiner-result-section');
+  const resultVideo = document.getElementById('combiner-result-video');
+  const downloadBtn = document.getElementById('download-combined-btn');
+  const totalDurEl = document.getElementById('total-duration');
+
+  // Drag reorder state
+  let dragSrcIndex = null;
+
+  /** Add files to the clip list */
+  async function addFiles(files) {
+    Overlay.show('Loading clips…', 'Extracting metadata and generating thumbnails');
+    let loaded = 0;
+
+    for (const file of files) {
+      try {
+        Overlay.update((loaded / files.length) * 100, `Loading ${file.name}…`);
+        const [meta, thumbUrl] = await Promise.all([
+          extractVideoMeta(file),
+          generateThumbnail(file),
+        ]);
+        clips.push({ id: uniqueId('clip'), file, meta, thumbUrl });
+        loaded++;
+      } catch (err) {
+        Toast.error(`Failed to load "${file.name}": ${err.message}`);
+        loaded++;
+      }
+    }
+
+    Overlay.hide();
+    renderTimeline();
+    if (clips.length > 0) Toast.success(`${loaded} clip${loaded > 1 ? 's' : ''} added to timeline.`);
+  }
+
+  /** Render the timeline UI */
+  function renderTimeline() {
+    if (clips.length === 0) {
+      timelineEl.classList.add('hidden');
+      combineBtn.disabled = true;
+      return;
+    }
+
+    timelineEl.classList.remove('hidden');
+    combineBtn.disabled = clips.length < 2;
+
+    // Calculate total duration
+    const totalDur = clips.reduce((sum, c) => sum + (c.meta.duration || 0), 0);
+    totalDurEl.innerHTML = `Total: <strong>${formatTime(totalDur)}</strong> &bull; ${clips.length} clip${clips.length > 1 ? 's' : ''}`;
+
+    clipListEl.innerHTML = '';
+    clips.forEach((clip, index) => {
+      const card = document.createElement('div');
+      card.className = 'clip-card';
+      card.draggable = true;
+      card.dataset.index = index;
+      card.id = `clip-card-${clip.id}`;
+
+      const m = clip.meta;
+      card.innerHTML = `
+        <span class="clip-index-badge">${index + 1}</span>
+        <span class="clip-drag-handle" title="Drag to reorder">
+          <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg>
+        </span>
+        <img class="clip-thumb" src="${clip.thumbUrl || ''}" alt="Thumbnail" style="${clip.thumbUrl ? '' : 'display:none'}">
+        <div class="clip-info">
+          <div class="clip-name" title="${m.fileName}">${m.fileName}</div>
+          <div class="clip-meta">
+            <span>${m.width}×${m.height}</span>
+            <span>${m.fps}fps</span>
+            <span>${m.codec}</span>
+            <span>${formatBytes(m.fileSize)}</span>
+          </div>
+        </div>
+        <span class="clip-duration-badge">${formatTime(m.duration)}</span>
+        <button class="clip-remove" title="Remove clip" data-clip-id="${clip.id}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      `;
+
+      // Drag events for reordering
+      card.addEventListener('dragstart', e => {
+        dragSrcIndex = index;
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', index);
+      });
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+        document.querySelectorAll('.clip-card').forEach(c => c.classList.remove('drag-over-card'));
+        dragSrcIndex = null;
+      });
+      card.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        card.classList.add('drag-over-card');
+      });
+      card.addEventListener('dragleave', () => card.classList.remove('drag-over-card'));
+      card.addEventListener('drop', e => {
+        e.preventDefault();
+        card.classList.remove('drag-over-card');
+        const fromIndex = dragSrcIndex;
+        const toIndex = index;
+        if (fromIndex !== null && fromIndex !== toIndex) {
+          const [moved] = clips.splice(fromIndex, 1);
+          clips.splice(toIndex, 0, moved);
+          renderTimeline();
+          Toast.success('Clip order updated.');
+        }
+      });
+
+      // Remove button
+      card.querySelector('.clip-remove').addEventListener('click', () => {
+        const idx = clips.findIndex(c => c.id === clip.id);
+        if (idx !== -1) {
+          safeRevokeURL(clips[idx].meta.url);
+          clips.splice(idx, 1);
+          renderTimeline();
+          Toast.success('Clip removed.');
+        }
+      });
+
+      clipListEl.appendChild(card);
+    });
+  }
+
+  /** Combine all clips into a single video */
+  async function combineClips() {
+    if (clips.length < 2) { Toast.warning('Add at least 2 clips to combine.'); return; }
+    if (!Features.mediaRecorder || !Features.captureStream) {
+      Toast.error('Your browser does not support MediaRecorder or Canvas captureStream.');
+      return;
+    }
+
+    Overlay.show('Combining clips…', 'Preparing canvas and recorder');
+
+    try {
+      // Determine output resolution (use the max width and height across clips)
+      const maxW = Math.max(...clips.map(c => c.meta.width));
+      const maxH = Math.max(...clips.map(c => c.meta.height));
+      const maxFps = Math.max(...clips.map(c => c.meta.fps));
+
+      // Create rendering canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = maxW;
+      canvas.height = maxH;
+      const ctx = canvas.getContext('2d', { alpha: false });
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      // Setup audio routing
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const audioDest = audioCtx.createMediaStreamDestination();
+
+      // Capture stream from canvas
+      const canvasStream = canvas.captureStream(maxFps);
+
+      // Combine video + audio tracks
+      const combinedStream = new MediaStream([
+        ...canvasStream.getVideoTracks(),
+        ...audioDest.stream.getAudioTracks(),
+      ]);
+
+      // Determine bitrate: 100 Mbps for 4K, scale down proportionally
+      // Minimum 12 Mbps to ensure quality even at lower resolutions
+      const pixels = maxW * maxH;
+      const p4K = 3840 * 2160;
+      const bitRate = Math.max(12_000_000, Math.round((pixels / p4K) * 100_000_000));
+
+      const mimeType = getBestMimeType();
+      const recorder = new MediaRecorder(combinedStream, {
+        mimeType: mimeType || undefined,
+        videoBitsPerSecond: bitRate,
+      });
+
+      const chunks = [];
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+      // Wrap recorder stop in a Promise
+      const recorderDone = new Promise(resolve => {
+        recorder.onstop = () => resolve();
+      });
+
+      recorder.start(1000); // Collect data every second
+
+      // Process each clip sequentially
+      const totalDuration = clips.reduce((s, c) => s + c.meta.duration, 0);
+      let elapsedDuration = 0;
+
+      for (let i = 0; i < clips.length; i++) {
+        const clip = clips[i];
+        Overlay.update(
+          (elapsedDuration / totalDuration) * 100,
+          `Clip ${i + 1} of ${clips.length}: ${clip.meta.fileName}`,
+          'Combining clips…'
+        );
+
+        await renderClipToCanvas(clip, canvas, ctx, audioCtx, audioDest, maxW, maxH, (progress) => {
+          const totalProgress = ((elapsedDuration + progress * clip.meta.duration) / totalDuration) * 100;
+          Overlay.update(totalProgress, `Clip ${i + 1} of ${clips.length}`);
+        });
+
+        elapsedDuration += clip.meta.duration;
+      }
+
+      Overlay.update(99, 'Finalizing…', 'Encoding final video');
+
+      // Stop recording
+      recorder.stop();
+      await recorderDone;
+
+      // Close audio context
+      await audioCtx.close();
+
+      // Create blob
+      if (combinedBlobUrl) safeRevokeURL(combinedBlobUrl);
+      const blob = new Blob(chunks, { type: mimeType || 'video/webm' });
+      combinedBlobUrl = URL.createObjectURL(blob);
+
+      // Show result
+      resultVideo.src = combinedBlobUrl;
+      resultSection.classList.remove('hidden');
+      resultVideo.load();
+
+      Overlay.hide();
+      Toast.success(`Video combined successfully! (${formatBytes(blob.size)})`);
+    } catch (err) {
+      Overlay.hide();
+      Toast.error(`Combining failed: ${err.message}`);
+      console.error('Combine error:', err);
+    }
+  }
+
+  /** Render a single clip's frames into the shared canvas */
+  function renderClipToCanvas(clip, canvas, ctx, audioCtx, audioDest, targetW, targetH, onProgress) {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.playsInline = true;
+      video.preload = 'auto';
+
+      // Create a new object URL for playback
+      const playUrl = URL.createObjectURL(clip.file);
+      video.src = playUrl;
+
+      let audioSource = null;
+      let frameId = null;
+      let resolved = false;
+
+      function cleanup() {
+        if (audioSource) { try { audioSource.disconnect(); } catch(e) {} }
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+        safeRevokeURL(playUrl);
+      }
+
+      video.addEventListener('error', () => {
+        if (!resolved) { resolved = true; cleanup(); reject(new Error(`Playback error: ${clip.meta.fileName}`)); }
+      });
+
+      video.addEventListener('ended', () => {
+        if (!resolved) {
+          resolved = true;
+          cleanup();
+          resolve();
+        }
+      });
+
+      video.addEventListener('canplay', () => {
+        // Connect audio
+        try {
+          audioSource = audioCtx.createMediaElementSource(video);
+          audioSource.connect(audioDest);
+        } catch (e) {
+          // Audio routing might fail silently — proceed anyway
+        }
+
+        // Start drawing frames
+        function drawFrame() {
+          if (resolved || video.paused || video.ended) return;
+
+          // Center and scale the video to fit the canvas (letterbox)
+          const vw = video.videoWidth;
+          const vh = video.videoHeight;
+          const scale = Math.min(targetW / vw, targetH / vh);
+          const dw = vw * scale;
+          const dh = vh * scale;
+          const dx = (targetW - dw) / 2;
+          const dy = (targetH - dh) / 2;
+
+          ctx.fillStyle = '#000';
+          ctx.fillRect(0, 0, targetW, targetH);
+          ctx.drawImage(video, dx, dy, dw, dh);
+
+          // Report progress
+          if (clip.meta.duration > 0) {
+            onProgress(video.currentTime / clip.meta.duration);
+          }
+
+          // Schedule next frame
+          if (Features.requestVideoFrameCallback) {
+            video.requestVideoFrameCallback(drawFrame);
+          } else {
+            const interval = 1000 / (clip.meta.fps || 30);
+            setTimeout(drawFrame, interval);
+          }
+        }
+
+        if (Features.requestVideoFrameCallback) {
+          video.requestVideoFrameCallback(drawFrame);
+        } else {
+          drawFrame();
+        }
+
+        video.play().catch(err => {
+          if (!resolved) { resolved = true; cleanup(); reject(err); }
+        });
+      }, { once: true });
+
+      // Safety timeout: 5 minutes per clip max
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          cleanup();
+          reject(new Error(`Timeout processing clip: ${clip.meta.fileName}`));
+        }
+      }, 300000);
+    });
+  }
+
+  /** Clear all clips */
+  function clearAll() {
+    clips.forEach(c => safeRevokeURL(c.meta.url));
+    clips = [];
+    renderTimeline();
+    resultSection.classList.add('hidden');
+    if (combinedBlobUrl) { safeRevokeURL(combinedBlobUrl); combinedBlobUrl = null; }
+    resultVideo.removeAttribute('src');
+    Toast.success('All clips cleared.');
+  }
+
+  /** Download the combined video */
+  function downloadCombined() {
+    if (!combinedBlobUrl) { Toast.warning('No combined video to download.'); return; }
+    const a = document.createElement('a');
+    a.href = combinedBlobUrl;
+    const ext = getExtFromMime(getBestMimeType());
+    a.download = `studioflow-combined-${Date.now()}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    Toast.success('Download started!');
+  }
+
+  // Event listeners
+  combineBtn.addEventListener('click', combineClips);
+  clearBtn.addEventListener('click', clearAll);
+  downloadBtn.addEventListener('click', downloadCombined);
+
+  // Setup upload zone
+  setupUploadZone('combiner-upload-zone', 'combiner-file-input', addFiles);
+
+  return { addFiles, combineClips, clearAll };
+})();
+
+/* ================================================================
+   SECTION 10: 360° → 180° CONVERTER MODULE (WebGL + GLSL)
+   ================================================================ */
+const Converter360 = (() => {
+  if (!Features.webGL2 && !Features.webGL1) {
+    // Hide converter tab button if WebGL unavailable
+    Toast.warning('WebGL not available — 360° converter disabled.');
+    return {};
+  }
+
+  let sourceFile = null;
+  let sourceUrl = null;
+  let convertedBlobUrl = null;
+  let glContext = null;
+  let glProgram = null;
+  let videoTexture = null;
+  let previewAnimId = null;
+  let isPreviewing = false;
+
+  const workspaceEl = document.getElementById('converter-workspace');
+  const sourceInfoEl = document.getElementById('converter-source-info');
+  const sourceVideo = document.getElementById('source-360-video');
+  const glCanvas = document.getElementById('webgl-canvas');
+  const convertBtn = document.getElementById('convert-start-btn');
+  const previewBtn = document.getElementById('preview-toggle-btn');
+  const downloadBtn = document.getElementById('download-converted-btn');
+
+  /* ----------------------------------------------------------------
+     10.1: GLSL SHADERS — Equirectangular to 180° Fisheye Remapping
+     ---------------------------------------------------------------- */
+
+  /**
+   * Vertex Shader: Simple fullscreen quad pass-through.
+   * Receives two triangles covering clip space [-1,1].
+   */
+  const VERTEX_SHADER_SOURCE = `
+    attribute vec2 a_position;
+    varying vec2 v_uv;
+    void main() {
+      // Map clip-space [-1,1] to UV [0,1]
+      v_uv = a_position * 0.5 + 0.5;
+      gl_Position = vec4(a_position, 0.0, 1.0);
+    }
+  `;
+
+  /**
+   * Fragment Shader: Remaps equirectangular 360° projection to
+   * a 180° equidistant fisheye projection (front-facing hemisphere).
+   *
+   * For each output pixel:
+   *   1. Compute normalized coordinates centered at (0,0) in [-1, 1]
+   *   2. Compute radial distance r from center
+   *   3. If r > 1, pixel is outside the fisheye circle → output black
+   *   4. Compute polar angle θ = r * π/2 (equidistant fisheye mapping)
+   *   5. Compute azimuthal angle φ = atan(y, x)
+   *   6. Convert to 3D direction on unit sphere:
+   *        dir = (sin(θ)·cos(φ),  sin(θ)·sin(φ),  cos(θ))
+   *   7. Convert 3D direction to equirectangular UV:
+   *        longitude λ = atan(dir.x, dir.z)    ∈ [-π, π]
+   *        latitude  φ = asin(dir.y)            ∈ [-π/2, π/2]
+   *        u = λ / (2π) + 0.5
+   *        v = 0.5 - φ / π
+   *   8. Sample the equirectangular video texture at (u, v)
+   */
+  const FRAGMENT_SHADER_SOURCE = `
+    precision highp float;
+    varying vec2 v_uv;
+    uniform sampler2D u_texture;
+
+    const float PI = 3.14159265359;
+    const float HALF_PI = 1.57079632679;
+    const float TWO_PI = 6.28318530718;
+
+    void main() {
+      // Step 1: Centered coordinates in [-1, 1] range
+      vec2 centered = v_uv * 2.0 - 1.0;
+
+      // Step 2: Radial distance from center
+      float r = length(centered);
+
+      // Step 3: Outside the fisheye circle → black
+      if (r > 1.0) {
+        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+        return;
+      }
+
+      // Step 4: Polar angle (equidistant fisheye projection)
+      // θ ranges from 0 (center/forward) to π/2 (edge/90° off-axis)
+      float theta = r * HALF_PI;
+
+      // Step 5: Azimuthal angle
+      float phi = atan(centered.y, centered.x);
+
+      // Step 6: Convert to 3D direction on unit sphere
+      // x = right, y = up, z = forward (into the screen)
+      float sinTheta = sin(theta);
+      vec3 dir = vec3(
+        sinTheta * cos(phi),   // right
+        sinTheta * sin(phi),   // up
+        cos(theta)             // forward
+      );
+
+      // Step 7: Convert 3D direction → equirectangular UV
+      // longitude: angle around vertical axis
+      float longitude = atan(dir.x, dir.z);  // [-π, π]
+      // latitude: angle from equator
+      float latitude = asin(clamp(dir.y, -1.0, 1.0));  // [-π/2, π/2]
+
+      // Map to texture UV coordinates [0, 1]
+      float u = longitude / TWO_PI + 0.5;
+      float v = 0.5 - latitude / PI;
+
+      // Step 8: Sample the equirectangular texture
+      gl_FragColor = texture2D(u_texture, vec2(u, v));
+    }
+  `;
+
+  /* ----------------------------------------------------------------
+     10.2: WebGL INITIALIZATION
+     ---------------------------------------------------------------- */
+
+  function initWebGL() {
+    const gl = glCanvas.getContext('webgl2', { preserveDrawingBuffer: true })
+              || glCanvas.getContext('webgl', { preserveDrawingBuffer: true });
+    if (!gl) { Toast.error('WebGL initialization failed.'); return false; }
+    glContext = gl;
+
+    // Compile shaders
+    const vs = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER_SOURCE);
+    const fs = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER_SOURCE);
+    if (!vs || !fs) return false;
+
+    // Link program
+    glProgram = gl.createProgram();
+    gl.attachShader(glProgram, vs);
+    gl.attachShader(glProgram, fs);
+    gl.linkProgram(glProgram);
+    if (!gl.getProgramParameter(glProgram, gl.LINK_STATUS)) {
+      Toast.error('Shader program linking failed: ' + gl.getProgramInfoLog(glProgram));
+      return false;
+    }
+    gl.useProgram(glProgram);
+
+    // Setup fullscreen quad geometry (two triangles)
+    const positions = new Float32Array([
+      -1, -1,   1, -1,   -1,  1,
+      -1,  1,   1, -1,    1,  1,
+    ]);
+    const posBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+
+    const aPos = gl.getAttribLocation(glProgram, 'a_position');
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+    // Create video texture
+    videoTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, videoTexture);
+    // Set texture parameters for non-power-of-two textures
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+    // Set texture uniform
+    const uTex = gl.getUniformLocation(glProgram, 'u_texture');
+    gl.uniform1i(uTex, 0);
+
+    return true;
+  }
+
+  /** Compile a WebGL shader with error reporting */
+  function compileShader(gl, type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      const info = gl.getShaderInfoLog(shader);
+      gl.deleteShader(shader);
+      Toast.error(`Shader compile error: ${info}`);
+      console.error('Shader compile error:', info);
+      return null;
+    }
+    return shader;
+  }
+
+  /* ----------------------------------------------------------------
+     10.3: RENDER FRAME — Upload video frame to GPU & draw
+     ---------------------------------------------------------------- */
+
+  function renderFrame() {
+    const gl = glContext;
+    if (!gl || !videoTexture) return;
+
+    // Upload current video frame to the texture
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, videoTexture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sourceVideo);
+
+    // Draw the fullscreen quad
+    gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+  }
+
+  /* ----------------------------------------------------------------
+     10.4: LIVE PREVIEW LOOP
+     ---------------------------------------------------------------- */
+
+  function startPreview() {
+    if (isPreviewing) return;
+    isPreviewing = true;
+    previewBtn.textContent = '⏹ Stop Preview';
+
+    if (!sourceVideo.paused) {
+      loopPreview();
+    } else {
+      sourceVideo.play().then(loopPreview).catch(() => {
+        Toast.warning('Could not auto-play source video.');
+        isPreviewing = false;
+        previewBtn.textContent = '▶ Live Preview';
+      });
+    }
+  }
+
+  function loopPreview() {
+    if (!isPreviewing) return;
+    renderFrame();
+    previewAnimId = requestAnimationFrame(loopPreview);
+  }
+
+  function stopPreview() {
+    isPreviewing = false;
+    previewBtn.textContent = '▶ Live Preview';
+    if (previewAnimId) {
+      cancelAnimationFrame(previewAnimId);
+      previewAnimId = null;
+    }
+  }
+
+  /* ----------------------------------------------------------------
+     10.5: LOAD SOURCE VIDEO
+     ---------------------------------------------------------------- */
+
+  async function loadSource(files) {
+    const file = files[0];
+    if (!file) return;
+
+    // Cleanup previous
+    stopPreview();
+    if (sourceUrl) { safeRevokeURL(sourceUrl); }
+    if (convertedBlobUrl) { safeRevokeURL(convertedBlobUrl); convertedBlobUrl = null; }
+    downloadBtn.classList.add('hidden');
+
+    sourceFile = file;
+    sourceUrl = URL.createObjectURL(file);
+
+    Overlay.show('Loading 360° video…', 'Extracting metadata');
+
+    try {
+      const meta = await extractVideoMeta(file);
+
+      sourceVideo.src = sourceUrl;
+      sourceVideo.load();
+
+      // Wait for loadedmetadata
+      await new Promise((resolve, reject) => {
+        sourceVideo.addEventListener('loadedmetadata', resolve, { once: true });
+        sourceVideo.addEventListener('error', () => reject(new Error('Failed to load video')), { once: true });
+      });
+
+      // Set canvas to output resolution (match source height for square fisheye output)
+      // 180° fisheye outputs to a square aspect ratio
+      const outputSize = Math.min(sourceVideo.videoHeight, sourceVideo.videoWidth);
+      glCanvas.width = outputSize;
+      glCanvas.height = outputSize;
+      glCanvas.style.width = '100%';
+      glCanvas.style.height = '100%';
+      glCanvas.style.objectFit = 'contain';
+
+      // Init WebGL if needed
+      if (!glContext) {
+        if (!initWebGL()) {
+          Overlay.hide();
+          Toast.error('Failed to initialize WebGL.');
+          return;
+        }
+      }
+
+      // Show source info
+      sourceInfoEl.innerHTML = `
+        <span class="info-chip"><span class="label">Res:</span> ${meta.width}×${meta.height}</span>
+        <span class="info-chip"><span class="label">FPS:</span> ${meta.fps}</span>
+        <span class="info-chip"><span class="label">Duration:</span> ${formatTime(meta.duration)}</span>
+        <span class="info-chip"><span class="label">Codec:</span> ${meta.codec}</span>
+        <span class="info-chip"><span class="label">Size:</span> ${formatBytes(meta.fileSize)}</span>
+        <span class="info-chip"><span class="label">Output:</span> ${outputSize}×${outputSize} (180° Fisheye)</span>
+      `;
+
+      // Revoke the metadata extraction URL (we keep sourceUrl for playback)
+      safeRevokeURL(meta.url);
+
+      workspaceEl.classList.remove('hidden');
+
+      // Render a single frame as a preview
+      sourceVideo.currentTime = 1;
+      await new Promise(r => sourceVideo.addEventListener('seeked', r, { once: true }));
+      renderFrame();
+
+      Overlay.hide();
+      Toast.success('360° video loaded. Use Live Preview or Convert & Record.');
+    } catch (err) {
+      Overlay.hide();
+      Toast.error(`Failed to load 360° video: ${err.message}`);
+    }
+  }
+
+  /* ----------------------------------------------------------------
+     10.6: CONVERT & RECORD
+     ---------------------------------------------------------------- */
+
+  async function convertAndRecord() {
+    if (!sourceVideo.src || !glContext) {
+      Toast.warning('Please load a 360° video first.');
+      return;
+    }
+    if (!Features.mediaRecorder || !Features.captureStream) {
+      Toast.error('MediaRecorder or captureStream not supported in this browser.');
+      return;
+    }
+
+    Overlay.show('Converting 360° → 180°…', 'Recording output frames');
+
+    try {
+      // Reset video to beginning
+      sourceVideo.currentTime = 0;
+      sourceVideo.muted = false;
+      await new Promise(r => sourceVideo.addEventListener('seeked', r, { once: true }));
+
+      // Setup audio routing for the source video
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const audioDest = audioCtx.createMediaStreamDestination();
+      let audioSource = null;
+      try {
+        audioSource = audioCtx.createMediaElementSource(sourceVideo);
+        audioSource.connect(audioDest);
+        // Also connect to speakers so user can hear during conversion (optional)
+        audioSource.connect(audioCtx.destination);
+      } catch (e) {
+        // Audio routing may fail if already connected
+      }
+
+      // Capture WebGL canvas stream
+      const fps = 30; // Use 30fps for conversion output
+      const canvasStream = glCanvas.captureStream(fps);
+
+      const combinedStream = new MediaStream([
+        ...canvasStream.getVideoTracks(),
+        ...audioDest.stream.getAudioTracks(),
+      ]);
+
+      // Bitrate proportional to output size
+      const pixels = glCanvas.width * glCanvas.height;
+      const p4K = 3840 * 2160;
+      const bitRate = Math.max(8_000_000, Math.round((pixels / p4K) * 80_000_000));
+
+      const mimeType = getBestMimeType();
+      const recorder = new MediaRecorder(combinedStream, {
+        mimeType: mimeType || undefined,
+        videoBitsPerSecond: bitRate,
+      });
+
+      const chunks = [];
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+      const recorderDone = new Promise(resolve => {
+        recorder.onstop = () => resolve();
+      });
+
+      recorder.start(1000);
+
+      // Render loop during video playback
+      const duration = sourceVideo.duration;
+      let converting = true;
+
+      function renderLoop() {
+        if (!converting) return;
+        renderFrame();
+        const progress = duration > 0 ? (sourceVideo.currentTime / duration) * 100 : 0;
+        Overlay.update(progress, `${formatTime(sourceVideo.currentTime)} / ${formatTime(duration)}`);
+        requestAnimationFrame(renderLoop);
+      }
+
+      sourceVideo.addEventListener('ended', () => {
+        converting = false;
+      }, { once: true });
+
+      renderLoop();
+      await sourceVideo.play();
+
+      // Wait for video to finish
+      await new Promise(resolve => {
+        if (sourceVideo.ended) { resolve(); return; }
+        sourceVideo.addEventListener('ended', resolve, { once: true });
+      });
+
+      converting = false;
+      Overlay.update(99, 'Finalizing…', 'Encoding final video');
+
+      // Small delay to ensure all frames are captured
+      await new Promise(r => setTimeout(r, 500));
+
+      recorder.stop();
+      await recorderDone;
+
+      // Disconnect audio
+      if (audioSource) { try { audioSource.disconnect(); } catch(e) {} }
+      await audioCtx.close();
+
+      // Create download
+      if (convertedBlobUrl) safeRevokeURL(convertedBlobUrl);
+      const blob = new Blob(chunks, { type: mimeType || 'video/webm' });
+      convertedBlobUrl = URL.createObjectURL(blob);
+
+      downloadBtn.classList.remove('hidden');
+      Overlay.hide();
+      Toast.success(`Conversion complete! (${formatBytes(blob.size)})`);
+    } catch (err) {
+      Overlay.hide();
+      Toast.error(`Conversion failed: ${err.message}`);
+      console.error('Conversion error:', err);
+    }
+  }
+
+  /* ----------------------------------------------------------------
+     10.7: DOWNLOAD CONVERTED VIDEO
+     ---------------------------------------------------------------- */
+
+  function downloadConverted() {
+    if (!convertedBlobUrl) { Toast.warning('No converted video to download.'); return; }
+    const a = document.createElement('a');
+    a.href = convertedBlobUrl;
+    const ext = getExtFromMime(getBestMimeType());
+    a.download = `studioflow-180-${Date.now()}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    Toast.success('Download started!');
+  }
+
+  /* ----------------------------------------------------------------
+     10.8: EVENT LISTENERS
+     ---------------------------------------------------------------- */
+
+  convertBtn.addEventListener('click', convertAndRecord);
+  previewBtn.addEventListener('click', () => { isPreviewing ? stopPreview() : startPreview(); });
+  downloadBtn.addEventListener('click', downloadConverted);
+
+  // Setup upload zone
+  setupUploadZone('converter-upload-zone', 'converter-file-input', loadSource);
+
+  return { loadSource, convertAndRecord, stopPreview };
+})();
+
+/* ================================================================
+   SECTION 11: VIDEO ROTATE & FLIP MODULE
+   ================================================================ */
+const VideoRotator = (() => {
+  let sourceFile = null;
+  let sourceUrl = null;
+  let exportedBlobUrl = null;
+
+  // Transform state
+  let rotation = 0;    // 0, 90, 180, 270
+  let flipH = false;
+  let flipV = false;
+
+  // DOM elements
+  const workspaceEl = document.getElementById('rotator-workspace');
+  const sourceInfoEl = document.getElementById('rotator-source-info');
+  const sourceVideo = document.getElementById('rotator-source-video');
+  const canvas = document.getElementById('rotator-canvas');
+  const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: false });
+  // Ensure highest quality image rendering for 4K+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  const exportBtn = document.getElementById('rotator-export-btn');
+  const downloadBtn = document.getElementById('rotator-download-btn');
+  const angleDisplay = document.getElementById('rotate-angle-display');
+  const flipHDisplay = document.getElementById('flip-h-display');
+  const flipVDisplay = document.getElementById('flip-v-display');
+
+  let previewAnimId = null;
+  let isPreviewing = false;
+
+  /* ---- Load Source ---- */
+  async function loadSource(files) {
+    const file = files[0];
+    if (!file) return;
+
+    stopPreview();
+    if (sourceUrl) safeRevokeURL(sourceUrl);
+    if (exportedBlobUrl) { safeRevokeURL(exportedBlobUrl); exportedBlobUrl = null; }
+    downloadBtn.classList.add('hidden');
+
+    sourceFile = file;
+    sourceUrl = URL.createObjectURL(file);
+    rotation = 0; flipH = false; flipV = false;
+    updateInfoBar();
+
+    Overlay.show('Loading video…', 'Extracting metadata');
+
+    try {
+      const meta = await extractVideoMeta(file);
+      sourceVideo.src = sourceUrl;
+      sourceVideo.load();
+
+      await new Promise((resolve, reject) => {
+        sourceVideo.addEventListener('loadedmetadata', resolve, { once: true });
+        sourceVideo.addEventListener('error', () => reject(new Error('Failed to load video')), { once: true });
+      });
+
+      // Set canvas to video dimensions
+      canvas.width = sourceVideo.videoWidth;
+      canvas.height = sourceVideo.videoHeight;
+
+      sourceInfoEl.innerHTML = `
+        <span class="info-chip"><span class="label">Res:</span> ${meta.width}×${meta.height}</span>
+        <span class="info-chip"><span class="label">FPS:</span> ${meta.fps}</span>
+        <span class="info-chip"><span class="label">Duration:</span> ${formatTime(meta.duration)}</span>
+        <span class="info-chip"><span class="label">Size:</span> ${formatBytes(meta.fileSize)}</span>
+        <span class="info-chip" style="border-color:rgba(0,214,143,0.3);color:var(--success)"><span class="label">Quality:</span> ${meta.width >= 3840 ? '4K UHD' : meta.width >= 2560 ? '1440p QHD' : meta.width >= 1920 ? '1080p FHD' : meta.width >= 1280 ? '720p HD' : 'SD'} — preserved</span>
+      `;
+      safeRevokeURL(meta.url);
+
+      workspaceEl.classList.remove('hidden');
+
+      // Reinforce quality settings after canvas resize
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      // Start live preview
+      sourceVideo.currentTime = 0;
+      await sourceVideo.play().catch(() => {});
+      startPreview();
+
+      Overlay.hide();
+      Toast.success('Video loaded! Use the controls to rotate or flip.');
+    } catch (err) {
+      Overlay.hide();
+      Toast.error(`Failed to load video: ${err.message}`);
+    }
+  }
+
+  /* ---- Update canvas dimensions when rotation swaps axes ---- */
+  /* Canvas always matches FULL source resolution — no downscaling */
+  function updateCanvasSize() {
+    const vw = sourceVideo.videoWidth;
+    const vh = sourceVideo.videoHeight;
+    // 90° and 270° swap width/height to preserve every pixel
+    if (rotation === 90 || rotation === 270) {
+      canvas.width = vh;
+      canvas.height = vw;
+    } else {
+      canvas.width = vw;
+      canvas.height = vh;
+    }
+    // Re-apply quality settings after canvas resize (resize resets context state)
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+  }
+
+  /* ---- Draw a single transformed frame ---- */
+  function drawFrame() {
+    const vw = sourceVideo.videoWidth;
+    const vh = sourceVideo.videoHeight;
+    const cw = canvas.width;
+    const ch = canvas.height;
+
+    ctx.save();
+    ctx.clearRect(0, 0, cw, ch);
+
+    // Move origin to center of canvas
+    ctx.translate(cw / 2, ch / 2);
+
+    // Apply rotation
+    ctx.rotate((rotation * Math.PI) / 180);
+
+    // Apply flips
+    const sx = flipH ? -1 : 1;
+    const sy = flipV ? -1 : 1;
+    ctx.scale(sx, sy);
+
+    // Draw video centered at origin (video always drawn at its native size)
+    ctx.drawImage(sourceVideo, -vw / 2, -vh / 2, vw, vh);
+
+    ctx.restore();
+  }
+
+  /* ---- Live Preview Loop ---- */
+  function startPreview() {
+    if (isPreviewing) return;
+    isPreviewing = true;
+    loopPreview();
+  }
+
+  function loopPreview() {
+    if (!isPreviewing) return;
+    drawFrame();
+    previewAnimId = requestAnimationFrame(loopPreview);
+  }
+
+  function stopPreview() {
+    isPreviewing = false;
+    if (previewAnimId) {
+      cancelAnimationFrame(previewAnimId);
+      previewAnimId = null;
+    }
+  }
+
+  /* ---- Update Info Bar ---- */
+  function updateInfoBar() {
+    angleDisplay.textContent = rotation + '°';
+    flipHDisplay.textContent = flipH ? 'On' : 'Off';
+    flipHDisplay.style.color = flipH ? 'var(--accent-blue)' : '';
+    flipVDisplay.textContent = flipV ? 'On' : 'Off';
+    flipVDisplay.style.color = flipV ? 'var(--accent-blue)' : '';
+
+    // Update active states on buttons
+    document.getElementById('flip-h-btn').classList.toggle('active', flipH);
+    document.getElementById('flip-v-btn').classList.toggle('active', flipV);
+
+    // Show output resolution so user can verify quality is preserved
+    if (sourceVideo.videoWidth) {
+      const outW = (rotation === 90 || rotation === 270) ? sourceVideo.videoHeight : sourceVideo.videoWidth;
+      const outH = (rotation === 90 || rotation === 270) ? sourceVideo.videoWidth : sourceVideo.videoHeight;
+      const qualityLabel = outW >= 3840 ? '4K UHD' : outW >= 2560 ? '1440p' : outW >= 1920 ? '1080p' : outW >= 1280 ? '720p' : 'SD';
+      angleDisplay.textContent = rotation + '° — Output: ' + outW + '×' + outH + ' (' + qualityLabel + ')';
+    }
+  }
+
+  /* ---- Rotation Controls ---- */
+  function rotateCW() {
+    rotation = (rotation + 90) % 360;
+    updateCanvasSize();
+    updateInfoBar();
+    drawFrame();
+  }
+
+  function rotateCCW() {
+    rotation = (rotation + 270) % 360;
+    updateCanvasSize();
+    updateInfoBar();
+    drawFrame();
+  }
+
+  function rotate180() {
+    rotation = (rotation + 180) % 360;
+    updateCanvasSize();
+    updateInfoBar();
+    drawFrame();
+  }
+
+  function toggleFlipH() {
+    flipH = !flipH;
+    updateInfoBar();
+    drawFrame();
+  }
+
+  function toggleFlipV() {
+    flipV = !flipV;
+    updateInfoBar();
+    drawFrame();
+  }
+
+  function resetTransforms() {
+    rotation = 0;
+    flipH = false;
+    flipV = false;
+    updateCanvasSize();
+    updateInfoBar();
+    drawFrame();
+    Toast.success('Transforms reset.');
+  }
+
+  /* ---- Export Rotated Video ---- */
+  async function exportVideo() {
+    if (!sourceVideo.src || !sourceVideo.videoWidth) {
+      Toast.warning('Load a video first.');
+      return;
+    }
+    if (!Features.mediaRecorder || !Features.captureStream) {
+      Toast.error('MediaRecorder not supported in this browser.');
+      return;
+    }
+
+    Overlay.show('Exporting rotated video…', 'Playing and recording transformed frames');
+
+    try {
+      // Pause live preview during export
+      stopPreview();
+
+      // Reset video to start
+      sourceVideo.pause();
+      sourceVideo.currentTime = 0;
+      await new Promise(r => sourceVideo.addEventListener('seeked', r, { once: true }));
+
+      // Ensure canvas is correct size (full native resolution — no downscaling)
+      updateCanvasSize();
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      // Setup audio routing
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const audioDest = audioCtx.createMediaStreamDestination();
+      let audioSource = null;
+      try {
+        audioSource = audioCtx.createMediaElementSource(sourceVideo);
+        audioSource.connect(audioDest);
+      } catch (e) { /* may already be connected or no audio */ }
+
+      // Detect FPS
+      let fps = 30;
+      try {
+        const meta = await extractVideoMeta(sourceFile);
+        fps = meta.fps || 30;
+        safeRevokeURL(meta.url);
+      } catch(e) {}
+
+      // Capture stream
+      const canvasStream = canvas.captureStream(fps);
+      const combinedStream = new MediaStream([
+        ...canvasStream.getVideoTracks(),
+        ...audioDest.stream.getAudioTracks(),
+      ]);
+
+      // Bitrate calculation: 80 Mbps baseline for 4K, never drop below 12 Mbps
+      // This ensures quality is preserved even at lower resolutions
+      const pixels = canvas.width * canvas.height;
+      const p4K = 3840 * 2160;
+      const bitRate = Math.max(12_000_000, Math.round((pixels / p4K) * 100_000_000));
+
+      const mimeType = getBestMimeType();
+      const recorder = new MediaRecorder(combinedStream, {
+        mimeType: mimeType || undefined,
+        videoBitsPerSecond: bitRate,
+      });
+
+      const chunks = [];
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+      const recorderDone = new Promise(resolve => { recorder.onstop = resolve; });
+
+      recorder.start(1000);
+
+      // Render loop
+      const duration = sourceVideo.duration;
+      let exporting = true;
+
+      // Use requestVideoFrameCallback for frame-perfect capture when available,
+      // falling back to requestAnimationFrame for broader support.
+      // This ensures every single frame is captured at native resolution.
+      function renderLoop() {
+        if (!exporting) return;
+        drawFrame();
+        const pct = duration > 0 ? (sourceVideo.currentTime / duration) * 100 : 0;
+        Overlay.update(pct, `${formatTime(sourceVideo.currentTime)} / ${formatTime(duration)}`);
+        if (Features.requestVideoFrameCallback) {
+          sourceVideo.requestVideoFrameCallback(renderLoop);
+        } else {
+          requestAnimationFrame(renderLoop);
+        }
+      }
+
+      sourceVideo.muted = false;
+      sourceVideo.addEventListener('ended', () => { exporting = false; }, { once: true });
+
+      renderLoop();
+      await sourceVideo.play();
+
+      // Wait for video to end
+      await new Promise(resolve => {
+        if (sourceVideo.ended) { resolve(); return; }
+        sourceVideo.addEventListener('ended', resolve, { once: true });
+      });
+
+      exporting = false;
+      Overlay.update(99, 'Finalizing…', 'Encoding final video');
+      await new Promise(r => setTimeout(r, 500));
+
+      recorder.stop();
+      await recorderDone;
+
+      if (audioSource) { try { audioSource.disconnect(); } catch(e) {} }
+      await audioCtx.close();
+
+      // Create download blob
+      if (exportedBlobUrl) safeRevokeURL(exportedBlobUrl);
+      const blob = new Blob(chunks, { type: mimeType || 'video/webm' });
+      exportedBlobUrl = URL.createObjectURL(blob);
+
+      downloadBtn.classList.remove('hidden');
+      Overlay.hide();
+
+      // Resume preview
+      sourceVideo.muted = true;
+      sourceVideo.currentTime = 0;
+      sourceVideo.play().catch(() => {});
+      startPreview();
+
+      Toast.success(`Export complete! (${formatBytes(blob.size)})`);
+    } catch (err) {
+      Overlay.hide();
+      Toast.error(`Export failed: ${err.message}`);
+      console.error('Rotate export error:', err);
+      // Resume preview
+      sourceVideo.muted = true;
+      sourceVideo.play().catch(() => {});
+      startPreview();
+    }
+  }
+
+  /* ---- Download ---- */
+  function downloadExported() {
+    if (!exportedBlobUrl) { Toast.warning('No exported video to download.'); return; }
+    const a = document.createElement('a');
+    a.href = exportedBlobUrl;
+    const ext = getExtFromMime(getBestMimeType());
+    a.download = `studioflow-rotated-${Date.now()}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    Toast.success('Download started!');
+  }
+
+  /* ---- Event Listeners ---- */
+  document.getElementById('rotate-cw-btn').addEventListener('click', rotateCW);
+  document.getElementById('rotate-ccw-btn').addEventListener('click', rotateCCW);
+  document.getElementById('rotate-180-btn').addEventListener('click', rotate180);
+  document.getElementById('flip-h-btn').addEventListener('click', toggleFlipH);
+  document.getElementById('flip-v-btn').addEventListener('click', toggleFlipV);
+  document.getElementById('rotate-reset-btn').addEventListener('click', resetTransforms);
+  exportBtn.addEventListener('click', exportVideo);
+  downloadBtn.addEventListener('click', downloadExported);
+
+  setupUploadZone('rotator-upload-zone', 'rotator-file-input', loadSource);
+
+  return { loadSource, rotateCW, rotateCCW, rotate180, toggleFlipH, toggleFlipV, resetTransforms };
+})();
+
+/* ================================================================
+   SECTION 12: KEYBOARD SHORTCUTS & GLOBAL EVENT HANDLERS
+   ================================================================ */
+
+// Prevent default drag behavior on the document
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => e.preventDefault());
+
+// Log startup info
+console.log(
+  '%c StudioFlow %c Premium Browser Video Editor ',
+  'background: linear-gradient(135deg, #4f8fff, #7c5cff); color: white; font-weight: 700; padding: 4px 8px; border-radius: 4px 0 0 4px;',
+  'background: #131a2e; color: #8a94ae; padding: 4px 8px; border-radius: 0 4px 4px 0;'
+);
+console.log('Features:', Features);
+</script>
+</body>
+</html>
