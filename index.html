@@ -2291,6 +2291,7 @@ const Converter360 = (() => {
 
     try {
       // Reset video to beginning
+      sourceVideo.loop = false;
       sourceVideo.currentTime = 0;
       sourceVideo.muted = false;
       await new Promise(r => sourceVideo.addEventListener('seeked', r, { once: true }));
@@ -2383,10 +2384,23 @@ const Converter360 = (() => {
       downloadBtn.classList.remove('hidden');
       Overlay.hide();
       Toast.success(`Conversion complete! (${formatBytes(blob.size)})`);
+
+      // Resume preview
+      sourceVideo.muted = true;
+      sourceVideo.loop = true;
+      sourceVideo.currentTime = 0;
+      sourceVideo.play().catch(() => {});
+      startPreview();
     } catch (err) {
       Overlay.hide();
       Toast.error(`Conversion failed: ${err.message}`);
       console.error('Conversion error:', err);
+
+      // Resume preview
+      sourceVideo.muted = true;
+      sourceVideo.loop = true;
+      sourceVideo.play().catch(() => {});
+      startPreview();
     }
   }
 
@@ -2659,6 +2673,7 @@ const VideoRotator = (() => {
       stopPreview();
 
       // Reset video to start
+      sourceVideo.loop = false;
       sourceVideo.pause();
       sourceVideo.currentTime = 0;
       await new Promise(r => sourceVideo.addEventListener('seeked', r, { once: true }));
@@ -2761,6 +2776,7 @@ const VideoRotator = (() => {
 
       // Resume preview
       sourceVideo.muted = true;
+      sourceVideo.loop = true;
       sourceVideo.currentTime = 0;
       sourceVideo.play().catch(() => {});
       startPreview();
@@ -2772,6 +2788,7 @@ const VideoRotator = (() => {
       console.error('Rotate export error:', err);
       // Resume preview
       sourceVideo.muted = true;
+      sourceVideo.loop = true;
       sourceVideo.play().catch(() => {});
       startPreview();
     }
