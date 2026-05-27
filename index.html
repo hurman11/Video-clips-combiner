@@ -1268,14 +1268,10 @@ function safeRevokeURL(url) {
 /** Detect the best supported MediaRecorder MIME type */
 function getBestMimeType() {
   const types = [
-    'video/mp4',
-    'video/webm;codecs=h264,opus',
-    'video/webm;codecs=h264',
     'video/webm;codecs=vp8,opus',
     'video/webm;codecs=vp8',
-    'video/webm;codecs=vp9,opus',
-    'video/webm;codecs=vp9',
-    'video/webm'
+    'video/webm',
+    'video/mp4'
   ];
   for (const type of types) {
     if (MediaRecorder.isTypeSupported(type)) return type;
@@ -1403,13 +1399,18 @@ function extractVideoMeta(file, wantThumbnail = false) {
 
       try {
         if (wantThumbnail) {
-          const t = Math.min(1, video.duration * 0.1 || 0);
-          video.currentTime = t;
+          // Avoid seeking (currentTime = t) because MediaRecorder exports often lack Cues/Duration.
+          // Seeking a video without Cues causes it to freeze or throw Error 4.
+          // Instead, we just play it and grab the very first frame that renders.
           await new Promise((res, rej) => {
-            const onSeeked = () => { video.removeEventListener('error', onErr); res(); };
-            const onErr = () => { video.removeEventListener('seeked', onSeeked); rej(); };
-            video.addEventListener('seeked', onSeeked, { once: true });
-            video.addEventListener('error', onErr, { once: true });
+            const onFrame = () => { video.pause(); res(); };
+            if (Features.requestVideoFrameCallback) {
+              video.requestVideoFrameCallback(onFrame);
+            } else {
+              video.addEventListener('timeupdate', onFrame, { once: true });
+            }
+            video.addEventListener('error', rej, { once: true });
+            video.play().catch(rej);
           });
           const canvas = document.createElement('canvas');
           canvas.width = Math.min(video.videoWidth, 320);
