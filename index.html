@@ -1363,29 +1363,30 @@ const Overlay = (() => {
 })();
 
 /* ================================================================
-   SECTION 5: VIDEO METADATA EXTRACTION
+   SECTION 5: VIDEO METADATA & THUMBNAIL EXTRACTION
    ================================================================ */
 
 /**
- * Extracts metadata from a video file: resolution, duration, estimated FPS, file size.
- * Returns a Promise that resolves with metadata.
+ * Extracts metadata and optionally generates a thumbnail using a SINGLE video element.
+ * Doing this consecutively in one element prevents hardware decoder exhaustion on mobile browsers.
  */
-function extractVideoMeta(file) {
+function extractVideoMeta(file, wantThumbnail = false) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const video = document.createElement('video');
-    video.preload = 'metadata';
+    video.preload = 'auto'; // Required for seeking and frame extraction
     video.muted = true;
+    video.playsInline = true;
 
     let resolved = false;
     const cleanup = () => {
+      video.pause();
       video.removeAttribute('src');
       video.load();
     };
 
-    video.addEventListener('loadedmetadata', () => {
+    video.addEventListener('loadedmetadata', async () => {
       if (resolved) return;
-      resolved = true;
 
       const meta = {
         width: video.videoWidth,
@@ -1396,23 +1397,39 @@ function extractVideoMeta(file) {
         fileSize: file.size,
         fileName: file.name,
         url: url, // caller must revoke when done
-        videoElement: null,
       };
 
-      // Try to detect FPS via requestVideoFrameCallback
-      if (Features.requestVideoFrameCallback && meta.duration > 0.1) {
-        detectFPS(video, url).then(fps => {
-          meta.fps = fps;
-          cleanup();
-          resolve(meta);
-        }).catch(() => {
-          cleanup();
-          resolve(meta);
-        });
-      } else {
-        cleanup();
-        resolve(meta);
+      let thumbUrl = '';
+
+      try {
+        if (wantThumbnail) {
+          const t = Math.min(1, video.duration * 0.1 || 0);
+          video.currentTime = t;
+          await new Promise((res, rej) => {
+            const onSeeked = () => { video.removeEventListener('error', onErr); res(); };
+            const onErr = () => { video.removeEventListener('seeked', onSeeked); rej(); };
+            video.addEventListener('seeked', onSeeked, { once: true });
+            video.addEventListener('error', onErr, { once: true });
+          });
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.min(video.videoWidth, 320);
+          canvas.height = Math.round(canvas.width * (video.videoHeight / video.videoWidth));
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          thumbUrl = canvas.toDataURL('image/jpeg', 0.7);
+        }
+
+        // Detect FPS using the same element
+        if (Features.requestVideoFrameCallback && meta.duration > 0.1) {
+          meta.fps = await detectFPSInline(video);
+        }
+      } catch (e) {
+        console.warn('Metadata extra extraction failed:', e);
       }
+
+      resolved = true;
+      cleanup();
+      resolve(wantThumbnail ? { meta, thumbUrl } : meta);
     });
 
     video.addEventListener('error', () => {
@@ -1421,6 +1438,7 @@ function extractVideoMeta(file) {
         safeRevokeURL(url);
         const errCode = video.error ? video.error.code : 'unknown';
         reject(new Error(`Browser failed to decode video (Error Code: ${errCode})`));
+        cleanup();
       }
     });
 
@@ -1428,17 +1446,12 @@ function extractVideoMeta(file) {
   });
 }
 
-/** Attempt FPS detection by counting frames in a short sample */
-function detectFPS(video, url) {
-  return new Promise((resolve, reject) => {
-    const testVideo = document.createElement('video');
-    testVideo.muted = true;
-    testVideo.playsInline = true;
-    testVideo.src = url;
-
+/** Attempt FPS detection by counting frames in a short sample using existing video */
+function detectFPSInline(video) {
+  return new Promise((resolve) => {
     let frameCount = 0;
     let startTime = null;
-    const sampleDuration = 0.5; // sample 500ms
+    const sampleDuration = 0.4; // sample 400ms
     let done = false;
 
     function onFrame(now, metadata) {
@@ -1448,39 +1461,30 @@ function detectFPS(video, url) {
 
       if (metadata.mediaTime - startTime >= sampleDuration) {
         done = true;
-        testVideo.pause();
+        video.pause();
         const elapsed = metadata.mediaTime - startTime;
         const fps = elapsed > 0 ? Math.round(frameCount / elapsed) : 30;
-        // Snap to common frame rates
         const common = [24, 25, 30, 48, 50, 60, 90, 120, 144, 240];
         const snapped = common.reduce((a, b) => Math.abs(b - fps) < Math.abs(a - fps) ? b : a);
         resolve(snapped);
-        testVideo.removeAttribute('src');
-        testVideo.load();
         return;
       }
-      testVideo.requestVideoFrameCallback(onFrame);
+      video.requestVideoFrameCallback(onFrame);
     }
 
-    testVideo.addEventListener('canplay', () => {
-      testVideo.requestVideoFrameCallback(onFrame);
-      testVideo.play().catch(() => {
-        resolve(30);
-      });
-    }, { once: true });
+    const onCanPlay = () => {
+      video.requestVideoFrameCallback(onFrame);
+      video.play().catch(() => resolve(30));
+    };
 
-    testVideo.addEventListener('error', () => reject(new Error('FPS detection failed')));
-
+    video.addEventListener('canplay', onCanPlay, { once: true });
+    
     // Timeout fallback
     setTimeout(() => {
-      if (!done) {
-        done = true;
-        testVideo.pause();
-        testVideo.removeAttribute('src');
-        testVideo.load();
-        resolve(30);
-      }
-    }, 3000);
+      if (!done) { done = true; video.pause(); resolve(30); }
+    }, 2000);
+
+    video.currentTime = 0; // Trigger canplay
   });
 }
 
@@ -1493,50 +1497,6 @@ function guessCodec(file) {
   if (name.endsWith('.mkv')) return 'H.264/H.265';
   if (name.endsWith('.mp4') || type.includes('mp4')) return 'H.264/H.265';
   return 'Unknown';
-}
-
-/* ================================================================
-   SECTION 6: THUMBNAIL GENERATOR
-   ================================================================ */
-
-/**
- * Generates a thumbnail from a video file at t=1s (or t=0 if short).
- * Returns a data URL string.
- */
-function generateThumbnail(file, seekTime = 1) {
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
-    const video = document.createElement('video');
-    video.preload = 'auto';
-    video.muted = true;
-    video.playsInline = true;
-
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    video.addEventListener('loadedmetadata', () => {
-      const t = Math.min(seekTime, video.duration * 0.1 || 0);
-      video.currentTime = t;
-    });
-
-    video.addEventListener('seeked', () => {
-      canvas.width = Math.min(video.videoWidth, 320);
-      canvas.height = Math.round(canvas.width * (video.videoHeight / video.videoWidth));
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-      safeRevokeURL(url);
-      video.removeAttribute('src');
-      video.load();
-      resolve(dataUrl);
-    }, { once: true });
-
-    video.addEventListener('error', () => {
-      safeRevokeURL(url);
-      resolve(''); // Return empty on error
-    });
-
-    video.src = url;
-  });
 }
 
 /* ================================================================
@@ -1613,9 +1573,10 @@ const ClipCombiner = (() => {
       try {
         Overlay.update((loaded / files.length) * 100, `Loading ${file.name}…`);
         
-        // Process sequentially to avoid exhausting browser hardware decoder contexts
-        const meta = await extractVideoMeta(file);
-        const thumbUrl = await generateThumbnail(file);
+        // Use a single video element to extract meta and thumb simultaneously to save decoders
+        const result = await extractVideoMeta(file, true);
+        const meta = result.meta;
+        const thumbUrl = result.thumbUrl;
         
         clips.push({ id: uniqueId('clip'), file, meta, thumbUrl });
         loaded++;
