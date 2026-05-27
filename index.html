@@ -1754,11 +1754,11 @@ const ClipCombiner = (() => {
         ...audioDest.stream.getAudioTracks(),
       ]);
 
-      // Determine bitrate: 100 Mbps for 4K, scale down proportionally
-      // Minimum 12 Mbps to ensure quality even at lower resolutions
+      // Determine bitrate: 35 Mbps for 4K (optimal balance of high quality and smooth encoding/playback)
+      // Minimum 8 Mbps to ensure quality even at lower resolutions
       const pixels = maxW * maxH;
       const p4K = 3840 * 2160;
-      const bitRate = Math.max(12_000_000, Math.round((pixels / p4K) * 100_000_000));
+      const bitRate = Math.max(8_000_000, Math.round((pixels / p4K) * 35_000_000));
 
       const mimeType = getBestMimeType();
       const recorder = new MediaRecorder(combinedStream, {
@@ -2453,9 +2453,9 @@ const VideoRotator = (() => {
   const sourceVideo = document.getElementById('rotator-source-video');
   const canvas = document.getElementById('rotator-canvas');
   const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: false });
-  // Ensure highest quality image rendering for 4K+
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
+  // For 90/180/270 degree rotations, pixel mapping is 1:1.
+  // Disabling smoothing drastically improves GPU performance and stops real-time frame drops (lag).
+  ctx.imageSmoothingEnabled = false;
   const exportBtn = document.getElementById('rotator-export-btn');
   const downloadBtn = document.getElementById('rotator-download-btn');
   const angleDisplay = document.getElementById('rotate-angle-display');
@@ -2507,9 +2507,8 @@ const VideoRotator = (() => {
 
       workspaceEl.classList.remove('hidden');
 
-      // Reinforce quality settings after canvas resize
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
+      // Reinforce settings after canvas resize
+      ctx.imageSmoothingEnabled = false;
 
       // Start live preview
       sourceVideo.currentTime = 0;
@@ -2537,9 +2536,8 @@ const VideoRotator = (() => {
       canvas.width = vw;
       canvas.height = vh;
     }
-    // Re-apply quality settings after canvas resize (resize resets context state)
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
+    // Re-apply settings after canvas resize (resize resets context state)
+    ctx.imageSmoothingEnabled = false;
   }
 
   /* ---- Draw a single transformed frame ---- */
@@ -2680,8 +2678,7 @@ const VideoRotator = (() => {
 
       // Ensure canvas is correct size (full native resolution — no downscaling)
       updateCanvasSize();
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
+      ctx.imageSmoothingEnabled = false;
 
       // Setup audio routing
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -2707,11 +2704,10 @@ const VideoRotator = (() => {
         ...audioDest.stream.getAudioTracks(),
       ]);
 
-      // Bitrate calculation: 80 Mbps baseline for 4K, never drop below 12 Mbps
-      // This ensures quality is preserved even at lower resolutions
+      // Bitrate calculation: 35 Mbps baseline for 4K (prevents encoder choke and playback lag), min 8 Mbps
       const pixels = canvas.width * canvas.height;
       const p4K = 3840 * 2160;
-      const bitRate = Math.max(12_000_000, Math.round((pixels / p4K) * 100_000_000));
+      const bitRate = Math.max(8_000_000, Math.round((pixels / p4K) * 35_000_000));
 
       const mimeType = getBestMimeType();
       const recorder = new MediaRecorder(combinedStream, {
