@@ -1419,7 +1419,8 @@ function extractVideoMeta(file) {
       if (!resolved) {
         resolved = true;
         safeRevokeURL(url);
-        reject(new Error(`Failed to load video: ${file.name}`));
+        const errCode = video.error ? video.error.code : 'unknown';
+        reject(new Error(`Browser failed to decode video (Error Code: ${errCode})`));
       }
     });
 
@@ -1611,12 +1612,16 @@ const ClipCombiner = (() => {
     for (const file of files) {
       try {
         Overlay.update((loaded / files.length) * 100, `Loading ${file.name}…`);
-        const [meta, thumbUrl] = await Promise.all([
-          extractVideoMeta(file),
-          generateThumbnail(file),
-        ]);
+        
+        // Process sequentially to avoid exhausting browser hardware decoder contexts
+        const meta = await extractVideoMeta(file);
+        const thumbUrl = await generateThumbnail(file);
+        
         clips.push({ id: uniqueId('clip'), file, meta, thumbUrl });
         loaded++;
+
+        // Add a small delay to allow browser garbage collection to release old video decoders
+        await new Promise(r => setTimeout(r, 250));
       } catch (err) {
         Toast.error(`Failed to load "${file.name}": ${err.message}`);
         loaded++;
